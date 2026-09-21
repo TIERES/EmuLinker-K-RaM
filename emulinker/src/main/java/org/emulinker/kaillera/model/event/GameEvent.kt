@@ -20,6 +20,20 @@ data class GameChatEvent(
   val message: String,
 ) : GameEvent
 
+/**
+ * Carries an opaque retry-connect signal from [fromUser] to the other player(s) in [game]. Unlike
+ * [GameInfoEvent] (broadcast to everyone, including the sender, for server announcements), this
+ * always has a concrete sender and is meant for "everyone else in the room" - the receiving
+ * [org.emulinker.kaillera.controller.v086.action.RetryConnectAction] skips [fromUser] itself
+ * rather than echoing the signal back to its own author.
+ */
+data class RetryConnectEvent(
+  override val game: KailleraGame,
+  val fromUser: KailleraUser,
+  val subtype: Byte,
+  val payload: ByteArray,
+) : GameEvent
+
 data class AllReadyEvent(override val game: KailleraGame) : GameEvent
 
 data class GameDesynchEvent(override val game: KailleraGame, val message: String) : GameEvent

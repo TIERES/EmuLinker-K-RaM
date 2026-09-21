@@ -112,6 +112,7 @@ abstract class V086Message : ByteBufferMessage {
           PlayerInformation.PlayerInformationSerializer,
           Quit.QuitSerializer,
           QuitGame.QuitGameSerializer,
+          RetryConnect.RetryConnectSerializer,
           ServerStatus.ServerStatusSerializer,
           StartGame.StartGameSerializer,
           UserInformation.UserInformationSerializer,
