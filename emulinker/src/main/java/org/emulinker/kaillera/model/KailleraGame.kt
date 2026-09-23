@@ -21,6 +21,7 @@ import org.emulinker.kaillera.model.event.GameInfoEvent
 import org.emulinker.kaillera.model.event.GameStartedEvent
 import org.emulinker.kaillera.model.event.GameStatusChangedEvent
 import org.emulinker.kaillera.model.event.PlayerDesynchEvent
+import org.emulinker.kaillera.model.event.RetryConnectEvent
 import org.emulinker.kaillera.model.event.UserDroppedGameEvent
 import org.emulinker.kaillera.model.event.UserJoinedGameEvent
 import org.emulinker.kaillera.model.event.UserQuitGameEvent
@@ -216,6 +217,15 @@ class KailleraGame(
   fun announce(announcement: String, toUser: KailleraUser? = null) {
     logger.atInfo().log("[ %s ] Announcement to %s: %s", this, toUser ?: "all", announcement)
     addEventForAllPlayers(GameInfoEvent(this, announcement, toUser))
+  }
+
+  /**
+   * Relays an opaque retry-connect signal from [user] to the other player(s) in this room. The
+   * server never interprets [subtype]/[payload] - see [RetryConnectEvent].
+   */
+  fun retryConnectRelay(user: KailleraUser, subtype: Byte, payload: ByteArray) {
+    if (user !in players) return
+    addEventForAllPlayers(RetryConnectEvent(this, user, subtype, payload))
   }
 
   @Synchronized

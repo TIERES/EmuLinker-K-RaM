@@ -23,6 +23,7 @@ val ActionModule = module {
   singleOf(::PlayerDesynchAction)
   singleOf(::QuitAction)
   singleOf(::QuitGameAction)
+  singleOf(::RetryConnectAction)
   singleOf(::StartGameAction)
   singleOf(::UserReadyAction)
 }

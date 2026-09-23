@@ -25,6 +25,7 @@ import org.emulinker.kaillera.controller.v086.action.LoginAction
 import org.emulinker.kaillera.controller.v086.action.PlayerDesynchAction
 import org.emulinker.kaillera.controller.v086.action.QuitAction
 import org.emulinker.kaillera.controller.v086.action.QuitGameAction
+import org.emulinker.kaillera.controller.v086.action.RetryConnectAction
 import org.emulinker.kaillera.controller.v086.action.StartGameAction
 import org.emulinker.kaillera.controller.v086.action.UserReadyAction
 import org.emulinker.kaillera.controller.v086.action.V086Action
@@ -44,6 +45,7 @@ import org.emulinker.kaillera.controller.v086.protocol.KeepAlive
 import org.emulinker.kaillera.controller.v086.protocol.PlayerDrop
 import org.emulinker.kaillera.controller.v086.protocol.Quit
 import org.emulinker.kaillera.controller.v086.protocol.QuitGame
+import org.emulinker.kaillera.controller.v086.protocol.RetryConnect
 import org.emulinker.kaillera.controller.v086.protocol.StartGame
 import org.emulinker.kaillera.controller.v086.protocol.UserInformation
 import org.emulinker.kaillera.model.KailleraServer
@@ -62,6 +64,7 @@ import org.emulinker.kaillera.model.event.GameStartedEvent
 import org.emulinker.kaillera.model.event.GameStatusChangedEvent
 import org.emulinker.kaillera.model.event.InfoMessageEvent
 import org.emulinker.kaillera.model.event.PlayerDesynchEvent
+import org.emulinker.kaillera.model.event.RetryConnectEvent
 import org.emulinker.kaillera.model.event.ServerEvent
 import org.emulinker.kaillera.model.event.UserDroppedGameEvent
 import org.emulinker.kaillera.model.event.UserEvent
@@ -95,6 +98,7 @@ class V086Controller(
   playerDesynchAction: PlayerDesynchAction,
   gameInfoAction: GameInfoAction,
   infoMessageAction: InfoMessageAction,
+  retryConnectAction: RetryConnectAction,
   flags: RuntimeFlags,
 ) : KailleraServerController, KoinComponent {
   override val clientTypes: Array<String> = flags.allowedProtocols.toTypedArray()
@@ -122,6 +126,7 @@ class V086Controller(
       GameDesynchEvent::class to gameDesynchAction,
       PlayerDesynchEvent::class to playerDesynchAction,
       GameInfoEvent::class to gameInfoAction,
+      RetryConnectEvent::class to retryConnectAction,
     )
   val userEventHandlers: Map<KClass<out UserEvent>, V086UserEventHandler<Nothing>> =
     mapOf(ConnectedEvent::class to ackAction, InfoMessageEvent::class to infoMessageAction)
@@ -181,6 +186,7 @@ class V086Controller(
     actions[CachedGameData.ID.toInt()] = CachedGameDataAction
     actions[GameData.ID.toInt()] = GameDataAction
     actions[PlayerDrop.ID.toInt()] = dropGameAction
+    actions[RetryConnect.ID.toInt()] = retryConnectAction
   }
 
   companion object {
