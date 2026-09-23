@@ -18,7 +18,11 @@ class ReleaseInfo {
   val version: String =
     if (CompiledFlags.PRERELEASE_BUILD) "$PROJECT_VERSION (pre-release)" else PROJECT_VERSION
 
-  val versionWithElkPrefix: String = "ELK$version"
+  // ".RA.0.1" is a fork-specific build tag (distinct from PROJECT_VERSION,
+  // which stays a plain Gradle-compatible version number) - bump this
+  // independently of PROJECT_VERSION for a build tagged to a specific
+  // deployment/RetroArch pairing without needing a full version bump.
+  val versionWithElkPrefix: String = "ELK$version.RA.0.1"
 
   val buildDate: Instant = BUILD_DATE
 
