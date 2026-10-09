@@ -45,6 +45,7 @@ import org.emulinker.proto.Player.PLAYER_FOUR
 import org.emulinker.proto.Player.PLAYER_ONE
 import org.emulinker.proto.Player.PLAYER_THREE
 import org.emulinker.proto.Player.PLAYER_TWO
+import org.emulinker.proto.Player.PLAYER_UNSPECIFIED
 import org.emulinker.util.EmuLang
 import org.emulinker.util.EmuUtil.toMillisDouble
 import org.koin.core.component.KoinComponent
@@ -838,7 +839,11 @@ class KailleraGame(
         2 -> PLAYER_TWO
         3 -> PLAYER_THREE
         4 -> PLAYER_FOUR
-        else -> throw IllegalStateException("Player number is out of bounds!")
+        // 5-8 player rooms (PSX multitap in RetroArch TIERES): the lag proto
+        // only names players 1-4. Throwing here ran on the game-data path
+        // once a minute, so a 5+ player game would break - report them as
+        // unspecified instead of changing the upstream schema.
+        else -> PLAYER_UNSPECIFIED
       }
   }
 }
