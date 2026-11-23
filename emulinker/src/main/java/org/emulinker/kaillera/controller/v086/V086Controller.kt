@@ -191,5 +191,14 @@ class V086Controller(
 
   companion object {
     const val MAX_BUNDLE_SIZE = 9
+
+    /** Messages kept per client for [V086ClientHandler.resendFromSerial] (~1 s of a game). */
+    const val SERIAL_RESEND_BUFFER_SIZE = 64
+
+    /** A bundle carries at most 32 messages (see [V086Bundle.parse]). */
+    const val MAX_RESEND_BUNDLE_MESSAGES = 32
+
+    /** The client repeats its request while the hole lasts; one answer per this interval. */
+    const val SERIAL_RESEND_MIN_INTERVAL_MS = 30L
   }
 }
