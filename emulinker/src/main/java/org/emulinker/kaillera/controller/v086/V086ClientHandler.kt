@@ -93,8 +93,12 @@ class V086ClientHandler(
 
   val serverGameDataCache: GameDataCache = FastGameDataCache(256)
 
-  private val lastMessageBuffer = LastMessageBuffer(V086Controller.MAX_BUNDLE_SIZE)
+  // Holds more than a bundle needs (MAX_BUNDLE_SIZE) so resendFromSerial() can go back ~1 s of a
+  // game; normal sends and resend() still only take the newest few.
+  private val lastMessageBuffer = LastMessageBuffer(V086Controller.SERIAL_RESEND_BUFFER_SIZE)
   private val outMessages = arrayOfNulls<V086Message>(V086Controller.MAX_BUNDLE_SIZE)
+  private val serialResendMessages = arrayOfNulls<V086Message>(V086Controller.SERIAL_RESEND_BUFFER_SIZE)
+  private var lastSerialResend = 0L
   private var testStart: Long = 0
   private var lastMeasurement: Long = 0
   var speedMeasurementCount = 0
@@ -165,6 +169,14 @@ class V086ClientHandler(
 
   // TODO(nue): This probably needs to be synchronized because of the last read number.
   private fun handleReceivedInternal(buffer: ByteBuf) {
+    // Serial resend request (n02 TIERES DLL): [0x00][first missing message number, LE16]. During
+    // a game the client lost server messages its bundles can't bring back any more - a lost
+    // GAMEDATA/GAMCDATA would otherwise shift its input for the rest of the match (a desync).
+    // A normal bundle always holds 1..32 messages, so a leading 0 can't be one.
+    if (buffer.readableBytes() == 3 && buffer.getByte(buffer.readerIndex()).toInt() == 0) {
+      resendFromSerial(buffer.getUnsignedShortLE(buffer.readerIndex() + 1))
+      return
+    }
     val inBundle: V086Bundle =
       try {
         V086Bundle.parse(buffer, lastMessageNumber)
@@ -374,6 +386,59 @@ class V086ClientHandler(
         buf.release()
         throw e
       }
+    }
+  }
+
+  /**
+   * Resends every message from [serial] (the client's first missing one) up to the newest, oldest
+   * of them still in [lastMessageBuffer]. Bundles go out newest message first, as usual; the
+   * client fills its holes from any of them and ignores what it already has.
+   */
+  fun resendFromSerial(serial: Int) {
+    synchronized(sendMutex) {
+      val now = System.currentTimeMillis()
+      if (now - lastSerialResend < V086Controller.SERIAL_RESEND_MIN_INTERVAL_MS) return
+      lastSerialResend = now
+
+      val n = lastMessageBuffer.fill(serialResendMessages, V086Controller.SERIAL_RESEND_BUFFER_SIZE)
+      val newest = serialResendMessages.firstOrNull()?.messageNumber ?: return
+      val span = (newest - serial) and 0xFFFF
+      if (span >= 0x8000) return // the client asks for something newer than anything sent
+      var count = 0
+      while (count < n) {
+        val m = serialResendMessages[count] ?: break
+        if (((m.messageNumber - serial) and 0xFFFF) > span) break // older than requested
+        count++
+      }
+      if (count == 0) return
+      stripFromProdBinary {
+        logger.atFinest().log("<- TO P%d: (RESEND %d messages from #%d)", user.id, count, serial)
+      }
+
+      var first = 0
+      while (first < count) {
+        var end = first
+        var bytes = 1
+        while (end < count && end - first < V086Controller.MAX_RESEND_BUNDLE_MESSAGES) {
+          val size = 4 + serialResendMessages[end]!!.bodyBytesPlusMessageIdType
+          if (end > first && bytes + size > flags.v086BufferSize) break
+          bytes += size
+          end++
+        }
+        val chunk = arrayOfNulls<V086Message>(end - first)
+        System.arraycopy(serialResendMessages, first, chunk, 0, end - first)
+        val buf = combinedKailleraController.alloc().directBuffer(flags.v086BufferSize)
+        try {
+          V086Bundle.Multi(chunk, chunk.size).writeTo(buf)
+          combinedKailleraController.send(DatagramPacket(buf, remoteSocketAddress!!))
+          clientResponseMeter?.mark()
+        } catch (e: Throwable) {
+          buf.release()
+          throw e
+        }
+        first = end
+      }
+      java.util.Arrays.fill(serialResendMessages, null)
     }
   }
 
